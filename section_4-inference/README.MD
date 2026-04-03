@@ -58,7 +58,7 @@ docker run --rm --gpus all -p 8080:8080 section4-inference-new
 ```
  
 
-## Run the evaluation benchmark - this docker runs on one thread, and then runs the benchmark script inside the container.
+## Run the evaluation benchmark - this runs the Docker container on one thread, and then runs the benchmark script inside the container.
 
 ```
 bash ./run_benchmark_new.sh "your commit message"
