@@ -1,0 +1,6 @@
+# onnx 1.17+ ships abi3 wheels — works on Python 3.12 natively, no source build
+onnx>=1.17.0
+# onnxruntime-gpu 1.20+ targets CUDA 12.x by default; 1.21+ includes preload_dlls() for PyTorch compatibility
+onnxruntime-gpu>=1.21.0
+onnxscript
+numpy<2

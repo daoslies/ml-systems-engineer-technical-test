@@ -1,0 +1,347 @@
+## Section 1 — ML Inference & Optimisation
+
+*Estimated time: ~60 minutes*
+
+A senior engineer suspects the 18-second latency is not caused by model weight size, but by inefficiencies in the inference code — specifically unnecessary CPU/GPU transfers and unoptimised data movement within the PyTorch pipeline.
+
+### 1.1 Profiling and fixing the pipeline
+
+You have SSH access to the inference server and the PyTorch source code. Describe how you would approach this end-to-end:
+
+- Which tools you would use to profile the pipeline and why
+- How you would distinguish between CPU-bound, GPU-bound, and I/O-bound hotspots
+- The optimisation techniques you would apply, in priority order — for each one, briefly note what it addresses, what the trade-off is, and how you would confirm it did not degrade output quality
+
+
+
+
+
+
+Answer:
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                            ---------
+
+
+
+So to start we need to build some evaluation pipelines - we need some metrics.
+
+We want latency for the end to end process of a call to the server.
+
+Within the server itself, we'll want to know the overall time to complete,
+but we'll also want to know the timings for the various subsections within the code 
+(preprocessing, model inference etc).
+
+And we do that with:
+
+PyTorch Profiler: CPU & GPU time.
+pynvml / nvidia-smi: GPU utilization and memory usage.
+psutil: For CPU utilization, memory, and I/O stats.
+Custom timing - time.time() or time.perf_counter() - to track specific processes.
+
+
+We also want some idea of model quality (so we can detect degredations).
+
+So we'd set up a test set evaluation and get model accuracies on that test set.
+
+And then run all these metrics as a single evaluation pipeline, so we have a baseline
++ can see the impact any of our changes have on inference speed and model quality.
+
+And finally graph our metrics so we can visually see our progress
+
+-----
+
+
+We'd distinguish between cpu/gpu/IO bottlenecks by looking at our graphs and charts
+And identifying which processes are the rate limiting steps (RLS), and if any steps are memory limited.
+
+if the RLS is cpu based preprocessing - cpu is the bottleneck.
+
+if the RLS is gpu powered model inferencce - gpu is the bottleneck.
+
+Understanding what the code is actually doing and where the gpu is being used is the key to identifying the above.
+
+if cpu and gpu utilization are low, but a process takes a long time to complete the issue is probably IO.
+
+
+-----
+
+
+Output quality degredation for all changes is identified via our evaluation test set. 
+(which we run after every change)
+
+
+Based on question 4, the first thing i'd do is check that we aren't loading the model on every inference call.
+
+
+But if the senior engineer thinks the issue is CPU/GPU transfer, 
+then investigating that would be the #1 item to resolve. 
+
+Ideally we'd only move data to cuda once during the whole process. 
+CPU/GPU transfer is a big IO bottleneck, so we really don't want to have to do it more than once.
+
+The trade off is that sometimes an operation is required to be performed on either cpu or gpu. 
+
+So the engineering challenge is to work out ways to perform all the operations required
+at the right point in the pipeline, and with the right device.
+
+
+
+Batching - video data is all about frames - easy to batch over. 
+
+We want to be batching and parrallellziing any and all operations that it's reasonable to batch.
+
+Trade offs - small batches can actually be slower if you have batching framework established
+so need to carefully evaluate batching based on actual workloads.
+
+
+Async - Some processes get blocked waiting for other proccesses. 
+
+No one likes getting held up, so if we can run those blocking proccesses asynchronously 
+we can save ourselves a lot of time. 
+
+The trade off is that bringing in an async often really increases the complexity
+of working with a codebase - so i find it can be very important to revert any asnyc changes
+if you discover they aren't actually helping with anything. 
+
+Otherwise you're just building in tech debt.
+
+
+Which leads us on to:
+
+Redundency - Sometimes there's stuff in your code that really just doesn't need to be there.
+
+Make sure that everything the server is doing is actually important. 
+
+It might be that you don't actually need some of the transforms, preprocessing, 
+torch.cuda.synchronize() etc etc etc
+
+Establish if it's important - remove if its not.
+
+
+
+And the summary of Redundency is the same as the summary for this whole section:
+
+If you understand your code fully and completely then it will be maximally efficient.
+
+Inefficiencies come from misunderstandings about what's actually going on under the hood.
+
+
+The best path to efficient code is well understood code.
+
+
+
+
+                            ---------
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+
+
+
+
+### 1.2 ONNX / TensorRT conversion
+
+The team wants to trial exporting the video generation model to ONNX and running it via TensorRT. Walk through how you would do this safely:
+
+- How you would handle dynamic input shapes (variable sentence lengths)
+- How you would validate the converted model produces equivalent outputs
+- How you would decide whether TensorRT actually gives a meaningful speedup for this specific workload
+
+> **Note:** If you have not used TensorRT directly, explain how you would approach learning it and what you would look for first.
+
+
+
+Answer:
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                            ---------
+
+
+I didn't get round to using tensorRT in section 3 (just used onnxruntime-gpu)
+and I think really I should have done. 
+
+(apart from anything else it looks to be a very straightforward change to the onnx provider:
+
+ort_session = ort.InferenceSession(
+    "model.onnx",
+    providers=["TensorrtExecutionProvider", "CUDAExecutionProvider"],
+))
+
+But that does mean I can explain my approach to learning it!
+
+Read the docs: 
+    https://developer.nvidia.com/tensorrt
+    https://docs.nvidia.com/deeplearning/tensorrt/latest/index.html
+
+Watch some youtube videos:
+
+    Some short intro ones:
+        https://www.youtube.com/watch?v=rK-jxPPY9V4 (2 mins)
+        https://www.youtube.com/watch?v=G_KhUFCUSsY (8 mins)
+
+    Followed by something a bit more in depth:
+        https://www.youtube.com/watch?v=UnIuMXGylfY (35 mins walking through a jupyter notebook)
+
+
+And then I'd build through a test project with it, utilising AI to sort out the boilerplate.
+
+
+----
+
+Evaluation would be the same as in the previous question.
+
+We'd want a test set that we're using as our benchmark, and comparing model performance 
+on that benchmark when the model is served via base pytorch vs TensorRT
+
+But that evaluation step could be a little slow, so it might be worth also using a quick:
+
+np.allclose(torch_out, onnx_out, atol=1e-4, rtol=1e-3)
+
+just as a very quick check that we aren't getting wildly different results from the change in model.
+
+Speed up evaluation is the same as in the previous question, we'd use the same metrics, same pipeline,
+just seeing what happens to our runtime scores when we swap out pytorch vs TensorRT for inference.
+
+
+----
+
+
+For dynamic input sizes, we're going to want to use the 
+dynamic_axes arg when we export:
+
+
+    dynamic_axes={
+        "input_ids": {1: "seq_len"},
+        "attention_mask": {1: "seq_len"},
+        "output": {1: "seq_len"},
+    },
+
+
+And define our min, opt and max shapes in our provider:
+
+
+providers = [
+    (
+        "TensorrtExecutionProvider",
+        {
+            "trt_engine_cache_enable": True,
+            "trt_engine_cache_path": "./trt_cache",
+
+            # KEY PART 👇
+            "trt_profile_min_shapes": "input_ids:1x8,attention_mask:1x8",
+            "trt_profile_opt_shapes": "input_ids:1x32,attention_mask:1x32",
+            "trt_profile_max_shapes": "input_ids:1x128,attention_mask:1x128",
+
+            "trt_fp16_enable": True,
+        },
+    ),
+    "CUDAExecutionProvider",
+]
+
+ort_session = ort.InferenceSession("model.onnx", providers=providers)
+
+
+It's important to understand our actual prediced traffic, as tensorRT wants an 'ideal/expected' 
+input size (trt_profile_opt_shapes) (and also has hard upper and lower limits)
+
+
+To accomadate this it may be worth incorporating some padding/truncation so that we always
+give our model an input with the expected size.
+
+---
+
+And then as a final note, it's probably worth swapping away from onnxruntime in python and its provider system
+and instead using the cli version, for the full performance gains:
+
+trtexec \
+  --onnx=model.onnx \
+  --minShapes=input_ids:1x8,attention_mask:1x8 \
+  --optShapes=input_ids:1x16,attention_mask:1x16 \
+  --maxShapes=input_ids:1x64,attention_mask:1x64 \
+  --fp16 \
+  --saveEngine=model.plan
+
+
+
+
+
+                            ---------
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+
+
+
+### 1.3 Incident
+
+At 11pm on a Tuesday, inference latency spikes from 7s to 45s on the live streaming pipeline. Grafana shows GPU utilisation has dropped from 85% to 12%.
+
+Walk through your diagnosis: what you check first, how you distinguish between a model issue, an infrastructure issue, and a traffic issue, and what you do to restore service before you have a root cause.
+
+
+
+Answer:
+
+
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                            ---------
+
+Very first thing I'd check - has anything changed from last week when I knew the system was stable
+
+Has a new model been deployed, has a new PR been merged, are there any changes to the infrastructure?
+
+
+If so the next step is very straightforward - restore service by reverting back to last week's build.
+
+
+
+Ok and then to the issue itself!
+
+Gpu util has dropped, but the service is still running slowly 
+
+- which I would assume means there's an issue with inputs getting to the model, 
+rather than an issue with the model itself.
+
+probably worth a quick check that inference isn't just falling back to cpu 
+(so an issue with cuda in some way) 
+establishged via a quick smi, just to see if anything's on the gpu at all.
+
+
+We'll want to check cpu utilisation as well (psutil). 
+
+
+A high cpu util would imply that CPU is bottlenecking 
+and that there's some step prior to inference which has become blocking.
+
+low cpu & low gpu - implies IO - Do we have a different inference provider we could try?
+Maybe AWS is having network issues. 
+
+
+It'll also be worth establishing if there's a massive requests queue.
+
+Maybe this is a load balancing issue. Or potentially someone's input some horribly massive request 
+which has slipped past our filters. 
+
+
+
+From there i'd check the logs to see if there's some clear and obvious error message popping up.
+
+And that would segue nicely into regular ol' debugging.
+
+
+If all else fails - do try a restart. 
+
+
+Long and the short:
+
+   Restore service as priority - rollback to previous version, try restarting the server. 
+
+   Treat metrics as the clues in your investigation.
+   Latency, util, error messages - the answer will be in there somewhere. 
+
+
+
+                            ---------
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$

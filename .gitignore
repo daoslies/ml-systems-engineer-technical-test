@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+# Jupyter and IPython
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and outputs
+*.log
+*.out
+*.sqlite3
+
+# Docker
+*.pid
+
+# cache files
+.cache/
+
+# Misc
+*.swp
+*.swo
+
+# Ignore model weights and large files
+*.pth
+*.pt
+*.onnx
+
+# Ignore build artifacts
+dist/
+build/
+*.tar.gz
+*.whl
+
+# Ignore environment files
+.env
+.venv/
+venv/
+ENV/

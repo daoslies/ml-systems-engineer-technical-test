@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+numpy<2
+torchvision
+pytest
+pandas
+black
+isort
+mypy
+opencv-python
+requests
+boto3

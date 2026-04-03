@@ -1,0 +1,80 @@
+
+## Final question
+
+Which part of this test felt most outside your current experience? What is your honest plan for closing that gap in the first 90 days at Signapse?
+
+*(There is no wrong answer — we value self-awareness over false confidence.)*
+
+
+Answer:
+
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                            ---------
+
+
+Section 2 - Kubernets.
+
+But I think really that's because I didn't try actually running anything from section-2, 
+as i did with the other sections.
+
+I got the obvious issues myself (secret exposed in the yaml, version the image, 
+rolling update, basing startup times on what i observed from sections 3 & 4 )
+
+But I did require quite a lot of outside reading and AI assistance with the rest of it.
+
+In a way that i really didn't with sectons 3 and 4, where AI was a very helpful tool,
+but didn't feel like a requirement.
+
+Though it is worth noting that I did find myself excited to explore the options for efficicecy 
+k8s provides, particularly the time slicing. 
+
+
+
+How do i resolve this in the first 90 days.
+
+I'm pretty confident that just using it for a couple of weeks will largely sort any issues out.
+
+But if you're after a targeted plan:
+
+    - set up a dummy k8s environment
+
+    - understand the profiling tools (metrics, logs, traces)
+
+    - red team some synthetic failure modes
+
+    - Develop an intuition for how those failure modes present in the profiling tools. 
+
+    - and from there understand how to set up k8s in a way that won't trigger failure modes.
+
+
+
+    -- && equally, if not more, important than the above.
+
+    read the bliddy docs:
+
+        https://kubernetes.io/docs/home/
+
+
+    Also I found these repos very helpful with answering the question:
+
+       - https://github.com/diegolnasc/kubernetes-best-practices
+
+       - https://github.com/DevSecOpsSamples/eks-gpu-autoscaling
+
+    
+    So, going more in depth on reading everything they have to say would, I think, also be very helpful.
+
+
+
+    The summary of my answer here is to read and practise. 
+
+    Which is how I approach learning any skill. 
+
+
+
+
+
+
+
+                            ---------
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$

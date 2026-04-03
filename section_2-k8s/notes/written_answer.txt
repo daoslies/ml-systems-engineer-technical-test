@@ -1,0 +1,160 @@
+
+Written Answer — GPU Packing Strategy
+
+The current deployment allocates one full GPU per pod, which is inefficient for this workload.
+
+And I'm basing this on having worked on question 4 before this one. 
+
+The benchmarks I produced in section 4 show:
+
+    Total latency: ~30–35ms
+
+    GPU inference time: ~5–6ms
+
+    GPU utilisation per request: ~15–20%
+
+This indicates that:
+
+    The GPU is idle for the majority of the request lifecycle (~80%).
+
+    Which means a single model instance does not fully utilise the GPU.
+
+
+---
+
+
+Option 1 — Time-slicing (The approach i'd go for)
+
+Description:
+
+    Multiple processes share a single GPU
+
+    CUDA scheduler interleaves execution across workloads
+
+Why it fits this workload:
+
+    - Short inference duration (~5ms)
+
+    - Low GPU utilisation
+
+    - Latency-sensitive but not GPU-saturated
+
+    - High throughput benefits from concurrency
+
+Implementation:
+
+    Enable time-slicing via NVIDIA device plugin configuration
+
+    Allow multiple pods (4 in the example below, based on the benchmark saying ~20%/request gpu util) to share a GPU
+
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+    name: nvidia-device-plugin-config
+    namespace: kube-system
+    data:
+    config.yaml: |
+        version: v1
+        sharing:
+        timeSlicing:
+            resources:
+            - name: nvidia.com/gpu
+                replicas: 4
+
+---
+
+Option 2 — MIG (Multi-Instance GPU)
+
+Description:
+
+    GPU is partitioned into hardware-isolated slices
+
+Pros:
+
+    Strong isolation
+
+    Predictable performance
+
+Cons:
+
+    Static partitioning
+
+    Less efficient for bursty workloads
+
+    Reduced flexibility compared to time-slicing
+
+When appropriate:
+
+    Multi-tenant environments
+
+    Strict QoS or isolation requirements
+
+---
+
+
+
+
+
+Decision
+
+For this workload:
+
+    Time-slicing is preferred due to low GPU utilisation and short inference times.
+
+    It enables higher GPU utilisation and better cost efficiency without sacrificing latency, 
+    provided concurrency is controlled.
+
+    MIG requires A100/H100 class hardware and static partition sizes, 
+    which would be overkill for a sub-1GB model with bursty short requests.
+    
+    
+Manifest implications
+
+    GPU sharing is primarily configured at the cluster level via the NVIDIA device plugin
+
+    each pod still requests nvidia.com/gpu: 1, but the plugin allows multiple pods
+    per GPU via time-slicing
+
+
+
+Additional considerations:
+
+    Increase pod concurrency
+
+    Introduce batching where appropriate
+
+    Monitor contention and latency
+
+
+
+
+Safe rollout strategy
+
+    Establish baseline performance (using the approach shown in section 4)
+
+    Enable time-slicing on a staging GPU node pool
+
+    Gradually increase number of pods per GPU
+
+    Load test with realistic traffic patterns
+
+    Monitor:
+
+        p95 / p99 latency
+
+        GPU utilisation
+
+        Error rates and OOM conditions
+
+    Incrementally increase packing density
+
+
+
+Summary:
+
+    Benchmark data shows GPU compute accounts for ~5–6ms of ~30ms total latency, 
+    indicating significant underutilisation. 
+
+    Packing multiple inference instances per GPU via time-slicing can substantially 
+    improve cost efficiency while maintaining latency, provided concurrency is carefully 
+    tested and controlled.
