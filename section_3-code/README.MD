@@ -16,7 +16,11 @@ or directly from terminal:
 ```
 docker run --rm --gpus all -v $(pwd):/workspace section3-code bash run_full_benchmark.sh
 ```
-![benchmark_results_plot.png](./benchmark_results_plot.png)  results from running the benchmark script.
+![benchmark_results_plot.png](./benchmark_results_plot.png)  
+
+
+![benchmark_results_table.png](./benchmark_results_table.png)
+
 
 The approach started with profiler.py, which uses:
 
