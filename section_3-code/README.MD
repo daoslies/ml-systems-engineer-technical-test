@@ -19,8 +19,6 @@ docker run --rm --gpus all -v $(pwd):/workspace section3-code bash run_full_benc
 
 [benchmark_results_plot.png](./benchmark_results_plot.png) results from running the benchmark script.
 
-## Note double check this comes up as a visual on github.
-
 The approach started with profiler.py, which uses:
 
         - A dataclass (BenchmarkResult) for the results and stats
