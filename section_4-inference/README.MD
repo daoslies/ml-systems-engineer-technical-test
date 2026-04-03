@@ -16,8 +16,8 @@ The results of every change are saved into a 'never reset' file, so that we can 
         I think really I should lock it all away behind a 'DEBUG' flag, but that's polish for another day.
 
 
- 
- 
+ ![benchmark_history.png](./benchmark_history.png)
+
 
 # Benchmarking Usage
 
