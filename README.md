@@ -1,7 +1,5 @@
 # Signapse — ML Systems Engineer Technical Assessment
 
-> **Confidential** · Please do not share or publish this assessment.
-
 Thank you for progressing to the technical stage. This test reflects the kinds of problems you would actually work on at Signapse reducing inference latency, scaling GPU infrastructure, and building reliable production ML systems.
 
 **Estimated time:** 3–4 hours total. There is no hard deadline — quality of thinking matters more than speed.
